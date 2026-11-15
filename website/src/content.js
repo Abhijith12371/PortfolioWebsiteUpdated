@@ -203,7 +203,7 @@ export const contact = {
     { label: 'Owl Post (Email)', icon: '✉️', value: 'abhijithnagula@gmail.com', href: 'mailto:abhijithnagula@gmail.com', copyable: true },
     { label: 'Guild Registry (LinkedIn)', icon: '⚜️', value: 'linkedin.com/in/Abhijith71', href: 'https://linkedin.com/in/Abhijith71' },
     { label: 'Spell Repository (GitHub)', icon: '🔮', value: 'github.com/Abhijith12371', href: 'https://github.com/Abhijith12371' },
-    { label: 'Astral Projection (Web)', icon: '🌌', value: 'abhijith-3d.netlify.app', href: 'https://abhijith-3d.netlify.app' },
+    { label: 'Astral Projection (Web)', icon: '🌌', value: 'digiboard.tech', href: 'https://digiboard.tech' },
     { label: 'Sanctum Location', icon: '🧭', value: 'Vijayawada, India' },
   ],
 }
