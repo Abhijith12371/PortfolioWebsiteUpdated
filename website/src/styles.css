@@ -1,0 +1,722 @@
+:root {
+  --gold: #e9c27a;
+  --gold-bright: #ffe4a3;
+  --gold-dim: rgba(233, 194, 122, 0.28);
+  --ink: #080b16;
+  --panel-bg: #0c1021;
+  --text: #ece6da;
+  --muted: #a9a294;
+  --serif: 'Cinzel', Georgia, serif;
+  --sans: 'Inter', system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; height: 100%; background: #05070f; overflow: hidden; }
+body { font-family: var(--sans); color: var(--text); }
+canvas { display: block; cursor: grab; }
+kbd {
+  font-family: var(--serif); font-size: 0.76em; font-weight: 700;
+  padding: 2px 7px; border-radius: 4px;
+  border: 1px solid rgba(233, 194, 122, 0.5);
+  background: linear-gradient(180deg, rgba(233, 194, 122, 0.2), rgba(233, 194, 122, 0.06));
+  color: var(--gold-bright);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+/* ── cinematic title ── */
+.cine { position: fixed; inset: 0; z-index: 50; pointer-events: none; overflow: hidden; }
+.cine.is-ready:not(.is-leaving) { pointer-events: auto; cursor: pointer; }
+.cine__video {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0;
+  opacity: 0;
+  will-change: opacity;
+  transform: translateZ(0);
+  transition: opacity 0.9s ease;
+}
+.cine.is-ready .cine__video {
+  opacity: 1;
+}
+.cine.is-ready .cine__video.is-ended,
+.cine.is-leaving .cine__video {
+  opacity: 0;
+}
+.cine__bar--top { display: none; }
+.cine__bar--bottom {
+  position: absolute; left: 0; right: 0; bottom: 18px; z-index: 5;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none;
+  transition: opacity 0.8s ease, transform 1s cubic-bezier(.7,0,.2,1);
+}
+.cine.is-leaving .cine__bar--bottom { opacity: 0; transform: translateY(40px); }
+.cine__keys {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 18px;
+  padding: 7px 18px; border-radius: 999px;
+  background: rgba(6, 9, 20, 0.55);
+  border: 1px solid rgba(233, 194, 122, 0.2);
+  color: #cfc6b4; font-size: 12px; letter-spacing: .05em;
+  animation: fade-in 1s ease 2.6s both;
+}
+.cine__keys span { display: flex; gap: 6px; align-items: center; }
+
+/* loading veil */
+.cine__veil {
+  position: absolute; inset: 0; z-index: 2; display: grid; place-items: center;
+  background: radial-gradient(ellipse at center, #0b0e1c 0%, #020308 70%);
+  transition: opacity 1.8s ease .3s, visibility 0s linear 2.1s;
+}
+.cine.is-ready .cine__veil { opacity: 0; visibility: hidden; }
+
+.loader { position: relative; width: min(320px, 70vw); aspect-ratio: 1; display: grid; place-items: center; }
+.loader__svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.loader__runes { fill: rgba(233, 194, 122, .55); font-size: 15px; letter-spacing: 3px; }
+.loader__track { fill: none; stroke: rgba(233, 194, 122, .12); stroke-width: 2; }
+.loader__fill { fill: none; stroke: var(--gold); stroke-width: 2.5; stroke-linecap: round; transition: stroke-dashoffset .4s ease; filter: drop-shadow(0 0 6px rgba(233, 194, 122, .8)); }
+.loader__dash { fill: none; stroke: rgba(233, 194, 122, .35); stroke-width: 1; stroke-dasharray: 2 7; }
+.loader__star { fill: none; stroke: rgba(233, 194, 122, .28); stroke-width: 1; }
+.loader__spin-slow { animation: spin 40s linear infinite; transform-origin: 0 0; }
+.loader__spin-rev { animation: spin 24s linear infinite reverse; transform-origin: 0 0; }
+.loader__pct { font-family: var(--serif); font-size: 44px; color: #f6e4bd; text-shadow: 0 0 24px rgba(233, 194, 122, .5); }
+.loader__pct span { font-size: 20px; opacity: .6; margin-left: 2px; }
+.loader__text { position: absolute; bottom: -42px; font-family: var(--serif); letter-spacing: .35em; text-transform: uppercase; font-size: 12px; color: var(--muted); animation: breathe 2.4s ease-in-out infinite; }
+
+/* title over the live scene */
+.cine__title {
+  position: absolute; z-index: 4; left: 0; right: 0; top: 0; bottom: 0; text-align: center; padding: 0 16px 9vh;
+  display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+  transition: opacity .9s ease, transform 1.2s cubic-bezier(.7,0,.2,1), filter .9s ease;
+}
+.cine::after {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(to top, rgba(2,3,8,.88) 0%, rgba(2,3,8,.3) 40%, transparent 65%);
+  transition: opacity 1.2s ease;
+}
+.cine.is-leaving::after { opacity: 0; }
+.cine.is-leaving .cine__title { opacity: 0; transform: translateY(-30px) scale(1.06); filter: blur(6px); }
+.cine__eyebrow { font-family: var(--serif); letter-spacing: .42em; text-transform: uppercase; font-size: 12px; color: var(--gold); animation: fade-up 1.2s ease .2s both; }
+.cine__name { margin: 12px 0 0; font-family: var(--serif); font-weight: 700; font-size: clamp(30px, min(9vw, 13vh), 108px); line-height: 1; letter-spacing: .04em; }
+.cine__name span {
+  display: inline-block;
+  background: linear-gradient(180deg, #fff6dc 0%, #f0cd85 45%, #a77b35 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,.85));
+  animation: letter-in 0.9s cubic-bezier(.2,.8,.2,1) both;
+}
+.cine__rule {
+  width: min(440px, 65vw); height: 1px; margin: min(20px, 2.4vh) auto min(14px, 1.8vh);
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  box-shadow: 0 0 12px var(--gold); animation: rule-in 1.4s cubic-bezier(.2,.8,.2,1) 1.3s both;
+}
+.cine__role { font-family: var(--serif); letter-spacing: .32em; text-transform: uppercase; color: var(--gold); font-size: clamp(13px, 1.6vw, 17px); animation: fade-up 1s ease 1.7s both; }
+.cine__tagline { color: #d0c8b8; margin: min(14px, 1.6vh) auto 0; max-width: 580px; font-size: 15px; animation: fade-up 1s ease 2s both; }
+.cine__press {
+  margin-top: min(26px, 3vh); padding: 10px 24px; border-radius: 999px;
+  border: 1px solid rgba(233, 194, 122, 0.45);
+  background: rgba(10, 14, 28, 0.72);
+  box-shadow: 0 0 28px rgba(233, 194, 122, 0.25);
+  font-family: var(--serif); letter-spacing: .2em; text-transform: uppercase; font-size: 12px; color: #f6e7c5;
+  animation: fade-in 1s ease 2.4s both, breathe 2.4s ease-in-out 3.4s infinite;
+}
+.cine__press kbd { margin: 0 4px; }
+
+@keyframes letter-in { from { opacity: 0; transform: translateY(32px); } }
+@keyframes rule-in { from { transform: scaleX(0); opacity: 0; } }
+@keyframes fade-up { from { opacity: 0; transform: translateY(14px); } }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes breathe { 50% { opacity: .5; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 3D Floating World Labels ── */
+.zone-label {
+  text-align: center; white-space: nowrap; transition: transform 0.3s, opacity 0.3s;
+  user-select: none; padding: 6px 14px; border-radius: 10px;
+  background: radial-gradient(ellipse at center, rgba(6, 9, 20, 0.72), transparent 80%);
+}
+.zone-label.is-near { transform: scale(1.14); }
+.zone-label__meta { display: flex; justify-content: center; gap: 6px; margin-bottom: 2px; font-family: var(--serif); font-size: 9px; letter-spacing: 0.22em; }
+.zone-label__num { color: var(--gold); opacity: 0.85; }
+.zone-label__check { color: #5cff9d; text-shadow: 0 0 8px #5cff9d; }
+.zone-label__sub { font-size: 11px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--c); text-shadow: 0 0 10px var(--c); }
+.zone-label__title { font-family: var(--serif); font-size: 24px; color: #fff; text-shadow: 0 0 18px var(--c), 0 2px 6px #000; }
+
+/* ── Top RPG Compass Bar ── */
+.compass {
+  position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 8;
+  display: flex; flex-direction: column; align-items: center; pointer-events: none;
+  animation: fade-up 0.8s ease both;
+}
+.compass__frame {
+  position: relative; width: min(360px, 82vw); height: 34px; overflow: hidden;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(8, 11, 24, 0.84), rgba(5, 7, 15, 0.68));
+  border: 1px solid rgba(233, 194, 122, 0.36);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6), inset 0 0 16px rgba(233, 194, 122, 0.08);
+}
+.compass__center-tick {
+  position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; transform: translateX(-50%);
+  background: linear-gradient(180deg, var(--gold), transparent 45%, transparent 55%, var(--gold));
+  opacity: 0.65;
+}
+.compass__cardinal {
+  position: absolute; left: 50%; top: 50%;
+  font-family: var(--serif); font-size: 10px; letter-spacing: 0.1em; color: rgba(236, 230, 218, 0.55);
+}
+.compass__cardinal.is-major { font-size: 12px; font-weight: 700; color: var(--gold); }
+.compass__poi {
+  position: absolute; left: 50%; top: 50%;
+  font-size: 14px; filter: drop-shadow(0 0 6px var(--c));
+  transition: font-size 0.2s;
+}
+.compass__poi.is-near { font-size: 18px; filter: drop-shadow(0 0 12px var(--c)); }
+.compass__poi.is-discovered::after {
+  content: ''; position: absolute; bottom: -3px; left: 50%; transform: translateX(-50%);
+  width: 4px; height: 4px; border-radius: 50%; background: #5cff9d;
+}
+.compass__sub {
+  margin-top: 4px; font-family: var(--serif); font-size: 10px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: rgba(233, 194, 122, 0.85);
+  text-shadow: 0 1px 4px #000;
+}
+
+/* ── Center Arcane Reticle ── */
+.reticle {
+  position: fixed; left: 50%; top: 50%; width: 10px; height: 10px;
+  transform: translate(-50%, -50%) rotate(45deg); z-index: 4; pointer-events: none;
+  border: 1px solid rgba(233, 194, 122, 0.45);
+  box-shadow: 0 0 8px rgba(233, 194, 122, 0.35);
+}
+.reticle::after {
+  content: ''; position: absolute; inset: 2px; border-radius: 50%;
+  background: rgba(233, 194, 122, 0.65);
+}
+
+/* ── RPG Achievement / Discovery Banner Toast ── */
+.rpg-banner {
+  position: fixed; top: 68px; left: 50%; transform: translateX(-50%) translateY(-12px) scale(0.96);
+  z-index: 25; pointer-events: none; text-align: center;
+  padding: 12px 34px; min-width: min(440px, 90vw);
+  background: radial-gradient(ellipse at center, rgba(10, 14, 28, 0.92) 0%, rgba(6, 8, 18, 0.4) 85%, transparent 100%);
+  opacity: 0; transition: opacity 0.45s ease, transform 0.45s cubic-bezier(.2,.8,.2,1);
+}
+.rpg-banner.is-visible { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+.rpg-banner__line {
+  height: 1px; width: 100%;
+  background: linear-gradient(90deg, transparent, var(--c, var(--gold)), transparent);
+  box-shadow: 0 0 12px var(--c, var(--gold));
+}
+.rpg-banner__eyebrow {
+  margin-top: 8px; font-family: var(--serif); font-weight: 700; font-size: 16px;
+  letter-spacing: 0.24em; color: var(--c, var(--gold));
+  text-shadow: 0 0 18px var(--c, var(--gold)), 0 2px 6px #000;
+}
+.rpg-banner__sub {
+  margin: 4px 0 8px; font-size: 13px; color: #efe7d6;
+  text-shadow: 0 1px 4px #000;
+}
+
+/* ── Top-Right Quest Tracker & Audio Controls ── */
+.quest-hud {
+  position: fixed; top: 14px; right: 18px; z-index: 12;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
+  animation: fade-up 0.9s ease both;
+}
+.quest-hud__controls { display: flex; gap: 8px; }
+.hud-pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
+  border-radius: 999px; font-family: var(--serif); font-size: 11px; letter-spacing: 0.08em;
+  color: var(--text); cursor: pointer;
+  background: rgba(8, 11, 22, 0.82);
+  border: 1px solid rgba(233, 194, 122, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.2s, transform 0.2s, background 0.2s;
+}
+.hud-pill:hover { border-color: var(--gold); transform: translateY(-1px); background: rgba(18, 24, 46, 0.9); }
+.hud-pill.is-muted { border-color: rgba(255, 90, 90, 0.45); color: var(--muted); }
+
+.quest-card {
+  width: 248px; padding: 12px 14px; border-radius: 12px;
+  background: linear-gradient(180deg, rgba(12, 16, 32, 0.88), rgba(7, 10, 20, 0.92));
+  border: 1px solid rgba(233, 194, 122, 0.35);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), inset 0 0 20px rgba(233, 194, 122, 0.05);
+}
+.quest-card.is-complete {
+  border-color: #ffd54a;
+  box-shadow: 0 0 28px rgba(255, 213, 74, 0.28), 0 10px 30px rgba(0, 0, 0, 0.65);
+}
+.quest-card__head { display: flex; justify-content: space-between; align-items: center; font-family: var(--serif); font-size: 10px; letter-spacing: 0.2em; color: var(--gold); }
+.quest-card__count { font-weight: 700; color: #fff; }
+.quest-card__title { margin: 4px 0 8px; font-family: var(--serif); font-size: 14px; color: #fff; }
+.quest-card__bar { height: 5px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); overflow: hidden; margin-bottom: 10px; }
+.quest-card__bar-fill {
+  height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, #a77b35, var(--gold), #fff1c2);
+  box-shadow: 0 0 10px var(--gold);
+  transition: width 0.5s cubic-bezier(.2,.8,.2,1);
+}
+.quest-card__slots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+.quest-slot {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 5px 2px; border-radius: 7px; cursor: pointer;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--muted); transition: all 0.2s;
+}
+.quest-slot:hover { border-color: var(--c); color: #fff; transform: translateY(-2px); }
+.quest-slot.is-unlocked {
+  background: color-mix(in srgb, var(--c) 18%, rgba(10, 14, 28, 0.9));
+  border-color: var(--c);
+  color: #fff;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--c) 35%, transparent);
+}
+.quest-slot__icon { font-size: 14px; }
+.quest-slot__label { font-size: 8px; letter-spacing: 0.04em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+/* ── Bottom-Left Player Character HUD ── */
+.hud { position: fixed; left: 18px; bottom: 18px; z-index: 10; pointer-events: none; animation: fade-up 1s ease both; }
+.hud__card {
+  display: flex; align-items: center; gap: 12px; padding: 10px 16px 10px 12px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(12, 16, 32, 0.88), rgba(7, 9, 19, 0.92));
+  border: 1px solid rgba(233, 194, 122, 0.35);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.65);
+}
+.hud__avatar {
+  width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; font-size: 23px;
+  background: radial-gradient(circle, rgba(233, 194, 122, 0.25), rgba(12, 16, 32, 0.95));
+  border: 1px solid var(--gold);
+  box-shadow: 0 0 14px rgba(233, 194, 122, 0.3);
+}
+.hud__rank { font-family: var(--serif); font-size: 9px; letter-spacing: 0.22em; color: var(--gold); }
+.hud__name { font-family: var(--serif); font-weight: 700; color: #fff; font-size: 15px; letter-spacing: 0.06em; }
+.hud__bars { display: grid; gap: 4px; margin: 5px 0; width: 170px; }
+.hud__bar { height: 4px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.hud__bar span { display: block; height: 100%; border-radius: 999px; }
+.hud__bar--hp span { width: 100%; background: linear-gradient(90deg, #b8324f, #ff5e7e); box-shadow: 0 0 8px #ff5e7e; }
+.hud__bar--mana span { width: 92%; background: linear-gradient(90deg, #3a6df0, #7fb2ff); box-shadow: 0 0 8px #7fb2ff; }
+.hud__stance { font-size: 11px; color: var(--muted); }
+
+/* ── Bottom-Center Action Hotbar ── */
+.hotbar {
+  position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 12;
+  display: flex; align-items: center; gap: 7px; padding: 7px 10px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(12, 16, 32, 0.9), rgba(6, 8, 18, 0.94));
+  border: 1px solid rgba(233, 194, 122, 0.38);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.hotbar__sep { width: 1px; height: 34px; background: rgba(233, 194, 122, 0.25); margin: 0 2px; }
+.hotbar__slot {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 58px; height: 54px; border-radius: 10px; cursor: pointer;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text); transition: all 0.2s;
+}
+.hotbar__slot:hover {
+  transform: translateY(-3px);
+  border-color: var(--c, var(--gold));
+  background: color-mix(in srgb, var(--c, var(--gold)) 15%, rgba(14, 18, 36, 0.95));
+  box-shadow: 0 0 16px color-mix(in srgb, var(--c, var(--gold)) 40%, transparent);
+}
+.hotbar__slot.is-unlocked {
+  border-color: color-mix(in srgb, var(--c) 65%, transparent);
+  background: color-mix(in srgb, var(--c) 12%, rgba(12, 16, 32, 0.9));
+}
+.hotbar__slot.is-active-mount {
+  border-color: #ffd54a;
+  background: rgba(255, 213, 74, 0.22);
+  box-shadow: 0 0 18px rgba(255, 213, 74, 0.45);
+}
+.hotbar__key {
+  position: absolute; top: -6px; right: -4px; font-size: 9px; padding: 1px 5px;
+}
+.hotbar__icon { font-size: 18px; line-height: 1; margin-top: 2px; }
+.hotbar__name { font-family: var(--serif); font-size: 9px; letter-spacing: 0.05em; color: var(--muted); margin-top: 4px; }
+.hotbar__slot:hover .hotbar__name, .hotbar__slot.is-unlocked .hotbar__name { color: #fff; }
+
+/* ── Interaction Prompt ── */
+.prompt {
+  position: fixed; left: 50%; bottom: 88px; transform: translateX(-50%); z-index: 14;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 11px 24px; border-radius: 999px; font-size: 15px;
+  background: linear-gradient(180deg, rgba(12, 16, 32, 0.92), rgba(7, 9, 20, 0.96));
+  border: 1px solid var(--c);
+  box-shadow: 0 0 28px color-mix(in srgb, var(--c) 50%, transparent), 0 8px 24px rgba(0, 0, 0, 0.65);
+  animation: rise-x 0.28s ease both;
+}
+.prompt.is-clickable { pointer-events: auto; cursor: pointer; }
+.prompt__icon { font-size: 18px; }
+.prompt strong { font-family: var(--serif); color: var(--c); }
+.prompt__sub { font-size: 12px; color: var(--muted); }
+
+/* ── Ornate Grimoire Relic Modal (`.panel`) ── */
+.panel-wrap {
+  position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 16px;
+  background: radial-gradient(ellipse at center, rgba(6, 9, 22, 0.65), rgba(2, 3, 8, 0.85));
+  backdrop-filter: blur(7px); animation: fade 0.25s ease both;
+}
+.panel {
+  position: relative; width: min(860px, 100%); max-height: min(86vh, 820px); overflow-y: auto;
+  padding: 24px 36px 26px; border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--c) 16%, transparent) 0%, transparent 55%),
+    linear-gradient(180deg, rgba(16, 20, 38, 0.97), rgba(8, 10, 22, 0.99));
+  border: 1px solid color-mix(in srgb, var(--c) 65%, rgba(233, 194, 122, 0.35));
+  box-shadow:
+    0 0 70px color-mix(in srgb, var(--c) 28%, transparent),
+    0 30px 90px rgba(0, 0, 0, 0.8),
+    inset 0 0 0 1px rgba(233, 194, 122, 0.14);
+  animation: rise 0.35s cubic-bezier(.2,.8,.2,1) both;
+}
+.panel::-webkit-scrollbar { width: 8px; }
+.panel::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.25); }
+.panel::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--c) 50%, #2a3048); border-radius: 999px; }
+
+/* Corner Filigree Ornaments */
+.panel__corner, .card-corner {
+  position: absolute; width: 26px; height: 26px; color: var(--c, var(--gold));
+  pointer-events: none; opacity: 0.75;
+}
+.panel__corner { width: 32px; height: 32px; opacity: 0.9; }
+.panel__corner--tl, .card-corner--tl { top: 8px; left: 8px; }
+.panel__corner--tr, .card-corner--tr { top: 8px; right: 8px; transform: scaleX(-1); }
+.panel__corner--bl, .card-corner--bl { bottom: 8px; left: 8px; transform: scaleY(-1); }
+.panel__corner--br, .card-corner--br { bottom: 8px; right: 8px; transform: scale(-1, -1); }
+
+/* Grimoire Top Relic Switcher Tabs */
+.panel__nav {
+  display: flex; flex-wrap: wrap; gap: 6px; padding-right: 38px; margin-bottom: 18px;
+}
+.panel__tab {
+  position: relative; display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 8px; cursor: pointer;
+  font-family: var(--serif); font-size: 11px; letter-spacing: 0.08em;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--muted); transition: all 0.2s;
+}
+.panel__tab:hover { color: #fff; border-color: var(--tc); }
+.panel__tab.is-active {
+  color: #fff;
+  background: color-mix(in srgb, var(--tc) 20%, rgba(12, 16, 32, 0.9));
+  border-color: var(--tc);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--tc) 35%, transparent);
+}
+.panel__tab-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: #5cff9d;
+  box-shadow: 0 0 6px #5cff9d;
+}
+
+.panel__close {
+  position: absolute; top: 18px; right: 20px; width: 36px; height: 36px;
+  border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.04); color: var(--muted);
+  font-size: 24px; line-height: 1; cursor: pointer; transition: all 0.2s;
+}
+.panel__close:hover { color: #fff; border-color: var(--c); background: color-mix(in srgb, var(--c) 22%, transparent); }
+
+/* Grimoire Header */
+.panel__header { display: flex; align-items: flex-start; gap: 18px; }
+.panel__crest {
+  flex: none; width: 64px; height: 64px; border-radius: 16px;
+  display: grid; place-items: center; font-size: 32px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--c) 28%, transparent), rgba(10, 13, 26, 0.95));
+  border: 1px solid var(--c);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--c) 40%, transparent), inset 0 0 12px color-mix(in srgb, var(--c) 25%, transparent);
+}
+.panel__badges { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.panel__rarity {
+  font-family: var(--serif); font-size: 10px; font-weight: 700; letter-spacing: 0.22em;
+  padding: 3px 9px; border-radius: 999px;
+  background: color-mix(in srgb, var(--c) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c) 55%, transparent);
+  color: var(--c);
+}
+.panel__sub { font-size: 11px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--muted); }
+.panel__title { font-family: var(--serif); font-size: 32px; margin: 6px 0 6px; color: #fff; text-shadow: 0 0 22px color-mix(in srgb, var(--c) 45%, transparent); }
+.panel__lore { margin: 0; font-style: italic; font-size: 13.5px; color: #c5bca9; line-height: 1.5; }
+.panel__divider {
+  height: 1px; margin: 18px 0 22px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--c) 65%, var(--gold)), transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--c) 40%, transparent);
+}
+
+.panel__body p { line-height: 1.7; color: #ded8cc; }
+.panel__body h3 { font-family: var(--serif); font-size: 18px; margin: 0; color: #fff; }
+
+.panel__footer {
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+  margin-top: 26px; padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.panel__hint { font-size: 12px; color: var(--muted); }
+
+/* ── RPG Buttons ── */
+.rpg-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 18px; border-radius: 8px; cursor: pointer; text-decoration: none;
+  font-family: var(--serif); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: #fff;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c, var(--gold)) 32%, #182038), color-mix(in srgb, var(--c, var(--gold)) 14%, #0d1224));
+  border: 1px solid color-mix(in srgb, var(--c, var(--gold)) 70%, transparent);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: all 0.2s;
+}
+.rpg-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--c, var(--gold)) 45%, transparent);
+}
+.rpg-btn--sm { padding: 6px 12px; font-size: 10.5px; }
+.rpg-btn--ghost { background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.2); }
+
+/* ── Section Divider ── */
+.section-divider {
+  display: flex; align-items: center; gap: 12px; margin: 24px 0 14px;
+  font-family: var(--serif); font-size: 11px; letter-spacing: 0.25em; color: var(--c, var(--gold));
+}
+.section-divider::before, .section-divider::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--c, var(--gold)) 45%, transparent), transparent);
+}
+
+/* ── Ancient Tome: Stat Grid & Illuminated Manuscript ── */
+.stat-grid, .guardian-status {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 10px; margin-bottom: 18px;
+}
+.stat-box {
+  padding: 12px 14px; border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border: 1px solid color-mix(in srgb, var(--c, var(--gold)) 32%, rgba(255, 255, 255, 0.08));
+}
+.stat-box__label { font-family: var(--serif); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--c, var(--gold)); }
+.stat-box__val { margin-top: 4px; font-weight: 600; font-size: 13.5px; color: #fff; }
+
+.manuscript__lead::first-letter {
+  float: left; font-family: var(--serif); font-size: 42px; line-height: 0.85;
+  padding: 4px 10px 2px 0; color: var(--c, var(--gold));
+  text-shadow: 0 0 16px color-mix(in srgb, var(--c, var(--gold)) 60%, transparent);
+}
+
+/* ── Royal Merits & Trophies (`.trophy-card`) ── */
+.highlights { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+.trophy-card {
+  position: relative; display: flex; align-items: flex-start; gap: 14px;
+  padding: 16px 18px; border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255, 207, 122, 0.08), rgba(14, 18, 34, 0.9));
+  border: 1px solid rgba(255, 207, 122, 0.28);
+  transition: transform 0.22s, border-color 0.22s, box-shadow 0.22s;
+}
+.trophy-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--c);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.5), 0 0 22px color-mix(in srgb, var(--c) 24%, transparent);
+}
+.trophy-card__emblem {
+  flex: none; width: 42px; height: 42px; border-radius: 10px;
+  display: grid; place-items: center; font-size: 22px;
+  background: rgba(255, 207, 122, 0.14); border: 1px solid rgba(255, 207, 122, 0.4);
+}
+.trophy-card__head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.trophy-card__badge {
+  font-family: var(--serif); font-weight: 700; font-size: 11px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--c);
+}
+.trophy-card__tier {
+  font-size: 9px; letter-spacing: 0.16em; padding: 2px 7px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07); color: #e9dec7;
+}
+.trophy-card__text { font-size: 13.5px; line-height: 1.5; color: #ece6da; }
+
+/* ── Ornate RPG Spell / Relic Project Cards (`.cards` & `.card`) ── */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+.card {
+  position: relative; display: flex; flex-direction: column;
+  padding: 20px 22px 18px; border-radius: 14px; text-decoration: none; color: inherit;
+  background:
+    radial-gradient(circle at 90% 10%, color-mix(in srgb, var(--c) 16%, transparent), transparent 55%),
+    linear-gradient(165deg, rgba(22, 28, 52, 0.92), rgba(10, 13, 26, 0.96));
+  border: 1px solid color-mix(in srgb, var(--c) 38%, rgba(233, 194, 122, 0.25));
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  transition: transform 0.25s cubic-bezier(.2,.8,.2,1), border-color 0.25s, box-shadow 0.25s;
+  overflow: hidden;
+}
+.card:hover {
+  transform: translateY(-5px);
+  border-color: var(--c);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.65), 0 0 30px color-mix(in srgb, var(--c) 32%, transparent);
+}
+.card__topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-bottom: 10px; margin-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--serif); font-size: 10px; letter-spacing: 0.16em;
+}
+.card__rarity { color: var(--gold); font-weight: 700; }
+.card__power {
+  padding: 2px 8px; border-radius: 999px;
+  background: color-mix(in srgb, var(--c) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c) 45%, transparent);
+  color: var(--c); font-weight: 700;
+}
+.card__hero { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+.card__sigil {
+  flex: none; width: 48px; height: 48px; border-radius: 12px;
+  display: grid; place-items: center; font-size: 24px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--c) 26%, transparent), rgba(10, 14, 28, 0.95));
+  border: 1px solid color-mix(in srgb, var(--c) 65%, transparent);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--c) 30%, transparent);
+}
+.card__school { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--c); margin-bottom: 2px; }
+.card__title { font-family: var(--serif); font-size: 20px; margin: 0; color: #fff; }
+.card__desc { margin: 0 0 14px; font-size: 13.8px; line-height: 1.58; color: #d6d0c4; flex: 1; }
+.card__runes-label {
+  font-family: var(--serif); font-size: 9.5px; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
+}
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tags span {
+  font-size: 11.5px; font-weight: 500; padding: 4px 11px; border-radius: 6px;
+  background: color-mix(in srgb, var(--c) 14%, rgba(12, 16, 32, 0.85));
+  border: 1px solid color-mix(in srgb, var(--c) 38%, transparent);
+  color: #f3ede0;
+  transition: transform 0.15s, border-color 0.15s, background 0.15s;
+}
+.tags span:hover {
+  transform: translateY(-1px);
+  border-color: var(--c);
+  background: color-mix(in srgb, var(--c) 26%, rgba(12, 16, 32, 0.95));
+}
+.card__cta {
+  margin-top: 16px; padding: 10px 14px; border-radius: 8px;
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: var(--serif); font-size: 11.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--c) 22%, transparent), color-mix(in srgb, var(--c) 8%, transparent));
+  border: 1px solid color-mix(in srgb, var(--c) 45%, transparent);
+  color: #fff; transition: background 0.2s, border-color 0.2s;
+}
+.card:hover .card__cta {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--c) 38%, transparent), color-mix(in srgb, var(--c) 16%, transparent));
+  border-color: var(--c);
+}
+.card__arrow { transition: transform 0.2s; }
+.card:hover .card__arrow { transform: translateX(4px); }
+
+/* ── Alchemical Skill Mastery Cards (`.skills` & `.skill-card`) ── */
+.skills { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 14px; }
+.skill-card {
+  position: relative; padding: 18px 20px; border-radius: 14px;
+  background: linear-gradient(160deg, rgba(18, 26, 44, 0.9), rgba(10, 14, 26, 0.95));
+  border: 1px solid color-mix(in srgb, var(--c) 35%, rgba(255, 255, 255, 0.08));
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.skill-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--c);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5), 0 0 22px color-mix(in srgb, var(--c) 22%, transparent);
+}
+.skill-card__head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.skill-card__title-wrap { display: flex; align-items: center; gap: 10px; }
+.skill-card__icon {
+  width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; font-size: 20px;
+  background: color-mix(in srgb, var(--c) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c) 45%, transparent);
+}
+.skill-card__rank { font-family: var(--serif); font-size: 9.5px; letter-spacing: 0.2em; color: var(--c); margin-top: 2px; }
+.skill-card__pct { font-family: var(--serif); font-weight: 700; font-size: 16px; color: var(--gold); }
+.skill-card__bar {
+  height: 5px; border-radius: 999px; background: rgba(255, 255, 255, 0.08);
+  margin: 10px 0 12px; overflow: hidden;
+}
+.skill-card__bar-fill {
+  height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--c) 55%, #111), var(--c));
+  box-shadow: 0 0 10px var(--c);
+}
+
+/* ── Experience Chronicle Cards (`.timeline` & `.timeline-card`) ── */
+.timeline {
+  list-style: none; margin: 0; padding: 0 0 0 22px;
+  border-left: 2px solid color-mix(in srgb, var(--c) 50%, transparent);
+  display: grid; gap: 16px;
+}
+.timeline-card {
+  position: relative; padding: 18px 20px; border-radius: 14px;
+  background: linear-gradient(160deg, rgba(22, 20, 42, 0.92), rgba(11, 10, 24, 0.96));
+  border: 1px solid color-mix(in srgb, var(--c) 38%, rgba(255, 255, 255, 0.08));
+  transition: transform 0.2s, border-color 0.2s;
+}
+.timeline-card:hover { transform: translateX(4px); border-color: var(--c); }
+.timeline-card::before {
+  content: ''; position: absolute; left: -29px; top: 22px; width: 12px; height: 12px;
+  transform: rotate(45deg); background: var(--c);
+  border: 2px solid #0c1021; box-shadow: 0 0 12px var(--c);
+}
+.timeline__meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-family: var(--serif); font-size: 10px; letter-spacing: 0.18em; }
+.timeline__rank { color: var(--gold); }
+.timeline__period {
+  padding: 2px 9px; border-radius: 999px;
+  background: color-mix(in srgb, var(--c) 18%, transparent);
+  color: var(--c); font-weight: 700;
+}
+.timeline__org { color: var(--c); font-size: 13.5px; font-weight: 500; margin-top: 3px; }
+.timeline p { margin: 8px 0 0; font-size: 14px; }
+
+/* ── Owl Post Contact Cards (`.links` & `.contact-card`) ── */
+.contact-intro { font-size: 15px; margin-top: 0; }
+.links { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 12px; }
+.contact-card {
+  position: relative; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+  padding: 16px 20px; border-radius: 13px;
+  background: linear-gradient(135deg, rgba(255, 213, 74, 0.08), rgba(12, 15, 28, 0.94));
+  border: 1px solid color-mix(in srgb, var(--c) 38%, rgba(255, 255, 255, 0.08));
+  transition: transform 0.2s, border-color 0.2s;
+}
+.contact-card:hover { transform: translateY(-2px); border-color: var(--c); }
+.contact-card__left { display: flex; align-items: center; gap: 14px; }
+.contact-card__icon {
+  width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center; font-size: 20px;
+  background: color-mix(in srgb, var(--c) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c) 45%, transparent);
+}
+.contact-card__label { font-family: var(--serif); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+.contact-card__val { display: inline-block; margin-top: 2px; font-size: 15px; font-weight: 600; color: #fff; text-decoration: none; }
+a.contact-card__val:hover { color: var(--c); }
+.contact-card__actions { display: flex; gap: 8px; }
+
+/* ── Dark Archmage Trial Overseer Cards ── */
+.guardian-relics { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.guardian-relic-card {
+  padding: 15px 16px; border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: border-color 0.2s, transform 0.2s;
+}
+.guardian-relic-card:hover { border-color: var(--c); transform: translateY(-2px); }
+.guardian-relic-card.is-awakened {
+  border-color: color-mix(in srgb, var(--c) 60%, transparent);
+  background: color-mix(in srgb, var(--c) 10%, rgba(12, 16, 32, 0.9));
+}
+.guardian-relic-card__head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.guardian-relic-card__icon { font-size: 24px; }
+.guardian-relic-card__sub { font-family: var(--serif); font-size: 9.5px; letter-spacing: 0.15em; color: var(--c); }
+.guardian-relic-card h4 { font-family: var(--serif); font-size: 15px; margin: 2px 0 0; color: #fff; }
+.guardian-relic-card__status {
+  margin-left: auto; font-family: var(--serif); font-size: 9px; letter-spacing: 0.14em;
+  padding: 2px 7px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06); color: var(--muted);
+}
+.guardian-relic-card.is-awakened .guardian-relic-card__status {
+  background: rgba(92, 255, 157, 0.15); color: #5cff9d;
+}
+.guardian-relic-card__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+@keyframes rise-x { from { opacity: 0; transform: translate(-50%, 14px); } }
+@keyframes fade { from { opacity: 0; } }
+
+@media (max-width: 760px) {
+  .panel { padding: 20px 18px 18px; }
+  .panel__title { font-size: 24px; }
+  .cards, .skills, .highlights { grid-template-columns: 1fr; }
+  .quest-card { display: none; }
+  .hud { display: none; }
+  .hotbar__slot { width: 48px; height: 48px; }
+}
