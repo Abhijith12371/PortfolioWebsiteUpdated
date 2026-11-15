@@ -1,4 +1,4 @@
-# 🧙‍♂️ Arcane Academy · 3D Wizarding RPG Portfolio
+# 🧙‍♂️3D Wizarding RPG Portfolio
 
 An interactive, dark-fantasy 3D portfolio website built with **React**, **Three.js**, **React Three Fiber (R3F)**, and **Rapier Physics**. Step into an ancient gothic stone arena as an Archmage, cast spell bolts from your wand, summon and fly a rideable Nimbus broomstick in mid-air, awaken glowing pedestal relics, and explore projects and skills in an illuminated RPG Grimoire.
 
